@@ -7,6 +7,7 @@
 
 #import "HNStoryTableViewCell.h"
 #import "HNStory.h"
+#import "HNThemeManager.h"
 
 @implementation HNStoryTableViewCell
 
@@ -19,41 +20,42 @@
 }
 
 - (void)setupUI {
+    HNThemeManager *themeManager = [HNThemeManager sharedManager];
+    
     self.backgroundColor = [UIColor clearColor];
     self.selectionStyle = UITableViewCellSelectionStyleNone;
     
     // Card View
     self.cardView = [[UIView alloc] init];
-    self.cardView.backgroundColor = [UIColor systemBackgroundColor];
-    self.cardView.layer.cornerRadius = 12;
-    self.cardView.layer.shadowColor = [UIColor blackColor].CGColor;
-    self.cardView.layer.shadowOffset = CGSizeMake(0, 2);
-    self.cardView.layer.shadowRadius = 8;
-    self.cardView.layer.shadowOpacity = 0.1;
+    self.cardView.backgroundColor = themeManager.cardBackgroundColor;
+    self.cardView.layer.cornerRadius = 8;
     self.cardView.layer.masksToBounds = NO;
     self.cardView.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:self.cardView];
     
+    // Apply hacker theme effects
+    [themeManager createHackerEffectsForView:self.cardView];
+    
     // Title Label
     self.titleLabel = [[UILabel alloc] init];
-    self.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
-    self.titleLabel.textColor = [UIColor labelColor];
+    self.titleLabel.font = [UIFont fontWithName:@"Courier-Bold" size:16];
+    self.titleLabel.textColor = themeManager.primaryTextColor;
     self.titleLabel.numberOfLines = 3;
     self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.cardView addSubview:self.titleLabel];
     
     // Subtitle Label (URL)
     self.subtitleLabel = [[UILabel alloc] init];
-    self.subtitleLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightRegular];
-    self.subtitleLabel.textColor = [UIColor systemBlueColor];
+    self.subtitleLabel.font = [UIFont fontWithName:@"Courier" size:13];
+    self.subtitleLabel.textColor = themeManager.accentColor;
     self.subtitleLabel.numberOfLines = 1;
     self.subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.cardView addSubview:self.subtitleLabel];
     
     // Meta Label
     self.metaLabel = [[UILabel alloc] init];
-    self.metaLabel.font = [UIFont systemFontOfSize:12 weight:UIFontWeightMedium];
-    self.metaLabel.textColor = [UIColor secondaryLabelColor];
+    self.metaLabel.font = [UIFont fontWithName:@"Courier" size:12];
+    self.metaLabel.textColor = themeManager.secondaryTextColor;
     self.metaLabel.numberOfLines = 1;
     self.metaLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [self.cardView addSubview:self.metaLabel];
@@ -88,9 +90,13 @@
 }
 
 - (void)configureWithStory:(HNStory *)story {
-    self.titleLabel.text = story.title ?: @"No Title";
+    HNThemeManager *themeManager = [HNThemeManager sharedManager];
     
-    // Format URL for subtitle
+    // Format title with hacker style
+    NSString *title = story.title ?: @"[NULL_DATA]";
+    self.titleLabel.text = [NSString stringWithFormat:@"> %@", title];
+    
+    // Format URL for subtitle with hacker style
     if (story.url) {
         NSURL *url = [NSURL URLWithString:story.url];
         NSString *domain = url.host;
@@ -99,37 +105,75 @@
             if ([domain hasPrefix:@"www."]) {
                 domain = [domain substringFromIndex:4];
             }
-            self.subtitleLabel.text = [NSString stringWithFormat:@"🔗 %@", domain];
+            self.subtitleLabel.text = [NSString stringWithFormat:@"[ACCESSING] %@/", domain];
         } else {
-            self.subtitleLabel.text = @"🔗 External Link";
+            self.subtitleLabel.text = @"[ACCESSING] unknown.host/";
         }
     } else {
-        self.subtitleLabel.text = @"📝 Text Post";
+        self.subtitleLabel.text = @"[LOCAL] system.log/";
     }
     
-    // Format meta information
-    NSString *metaInfo = [NSString stringWithFormat:@"⬆️ %@ • 💬 %@ • %@", 
+    // Format meta information with hacker style
+    NSString *author = story.author ?: @"anonymous";
+    NSString *metaInfo = [NSString stringWithFormat:@"[USER:%@] [SCORE:%@] [COMMENTS:%@]", 
+                         author,
                          story.score ?: @"0",
-                         story.commentCount ?: @"0",
-                         story.author ?: @"anonymous"];
+                         story.commentCount ?: @"0"];
     
     self.metaLabel.text = metaInfo;
+    
+    // Add random color variation to primary text
+    if (arc4random_uniform(4) == 0) {
+        self.titleLabel.textColor = [themeManager randomHackerColor];
+    }
 }
 
 - (void)setHighlighted:(BOOL)highlighted animated:(BOOL)animated {
     [super setHighlighted:highlighted animated:animated];
+    HNThemeManager *themeManager = [HNThemeManager sharedManager];
     
     if (highlighted) {
-        [UIView animateWithDuration:0.1 animations:^{
-            self.cardView.transform = CGAffineTransformMakeScale(0.98, 0.98);
-            self.cardView.alpha = 0.8;
+        // Hacker-style highlight effect
+        [UIView animateWithDuration:0.15 animations:^{
+            self.cardView.transform = CGAffineTransformMakeScale(0.95, 0.95);
+            self.cardView.alpha = 0.7;
+            self.cardView.backgroundColor = themeManager.highlightColor;
+            self.titleLabel.textColor = [UIColor whiteColor];
         }];
+        
+        // Add glitch effect
+        [self addGlitchEffect];
     } else {
-        [UIView animateWithDuration:0.2 animations:^{
+        [UIView animateWithDuration:0.3 animations:^{
             self.cardView.transform = CGAffineTransformIdentity;
             self.cardView.alpha = 1.0;
+            self.cardView.backgroundColor = themeManager.cardBackgroundColor;
+            self.titleLabel.textColor = themeManager.primaryTextColor;
         }];
     }
+}
+
+- (void)addGlitchEffect {
+    HNThemeManager *themeManager = [HNThemeManager sharedManager];
+    
+    // Quick color flash glitch
+    NSArray *glitchColors = @[
+        themeManager.highlightColor,
+        themeManager.accentColor,
+        [UIColor whiteColor],
+        themeManager.primaryTextColor
+    ];
+    
+    for (int i = 0; i < 3; i++) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(i * 0.05 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            self.titleLabel.textColor = glitchColors[i % glitchColors.count];
+        });
+    }
+    
+    // Reset to original color after glitch
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.2 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        self.titleLabel.textColor = themeManager.primaryTextColor;
+    });
 }
 
 - (void)prepareForReuse {

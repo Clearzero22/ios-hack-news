@@ -11,6 +11,7 @@
 #import "HNNewsDetailViewController.h"
 #import "HNStoryTableViewCell.h"
 #import "HNEmptyStateView.h"
+#import "HNThemeManager.h"
 
 @interface HNNewsListViewController () <UITableViewDataSource, UITableViewDelegate>
 
@@ -26,13 +27,39 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+    [self applyHackerTheme];
     [self setupUI];
     [self loadStories];
 }
 
+- (void)applyHackerTheme {
+    HNThemeManager *themeManager = [HNThemeManager sharedManager];
+    
+    // Apply global theme
+    [themeManager applyHackerTheme];
+    
+    // Apply view-specific theme
+    self.view.backgroundColor = themeManager.primaryBackgroundColor;
+    
+    // Update title with hacker style
+    self.title = @"🟢 HACKER://NEWS";
+    
+    // Set navigation appearance
+    self.navigationController.navigationBar.backgroundColor = themeManager.primaryBackgroundColor;
+    self.navigationController.navigationBar.barTintColor = themeManager.primaryBackgroundColor;
+    
+    // Force status bar to light content for dark theme
+    [self setNeedsStatusBarAppearanceUpdate];
+}
+
+- (UIStatusBarStyle)preferredStatusBarStyle {
+    return UIStatusBarStyleLightContent;
+}
+
 - (void)setupUI {
-    self.title = @"🍎 Hacker News";
-    self.view.backgroundColor = [UIColor systemGroupedBackgroundColor];
+    HNThemeManager *themeManager = [HNThemeManager sharedManager];
+    
+    self.view.backgroundColor = themeManager.primaryBackgroundColor;
     
     // Set navigation appearance
     self.navigationController.navigationBar.prefersLargeTitles = YES;
@@ -42,7 +69,7 @@
     self.tableView = [[UITableView alloc] initWithFrame:self.view.bounds style:UITableViewStylePlain];
     self.tableView.dataSource = self;
     self.tableView.delegate = self;
-    self.tableView.backgroundColor = [UIColor systemGroupedBackgroundColor];
+    self.tableView.backgroundColor = themeManager.primaryBackgroundColor;
     self.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
     self.tableView.showsVerticalScrollIndicator = NO;
     [self.tableView registerClass:[HNStoryTableViewCell class] forCellReuseIdentifier:@"StoryCell"];
@@ -59,14 +86,18 @@
     
     // Loading Indicator
     self.loadingIndicator = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleLarge];
-    self.loadingIndicator.color = [UIColor systemOrangeColor];
+    self.loadingIndicator.color = themeManager.accentColor;
     self.loadingIndicator.center = self.view.center;
     self.loadingIndicator.hidesWhenStopped = YES;
     [self.view addSubview:self.loadingIndicator];
     
+    // Add hacker effects to loading indicator
+    [themeManager createHackerEffectsForView:self.loadingIndicator];
+    
     // Refresh Control
     self.refreshControl = [[UIRefreshControl alloc] init];
-    self.refreshControl.tintColor = [UIColor systemOrangeColor];
+    self.refreshControl.tintColor = themeManager.accentColor;
+    self.refreshControl.backgroundColor = themeManager.secondaryBackgroundColor;
     [self.refreshControl addTarget:self action:@selector(refreshStories) forControlEvents:UIControlEventValueChanged];
     self.tableView.refreshControl = self.refreshControl;
 }
@@ -199,25 +230,39 @@
 }
 
 - (void)animateCellsAppearance {
+    HNThemeManager *themeManager = [HNThemeManager sharedManager];
+    
     for (NSInteger i = 0; i < self.stories.count; i++) {
         NSIndexPath *indexPath = [NSIndexPath indexPathForRow:i inSection:0];
         UITableViewCell *cell = [self.tableView cellForRowAtIndexPath:indexPath];
         
         if (cell) {
-            // Start with cells off-screen to the left
+            // Start with cells off-screen and with glitch effect
             cell.transform = CGAffineTransformMakeTranslation(-self.view.frame.size.width, 0);
             cell.alpha = 0;
             
-            // Animate them in with a stagger
-            [UIView animateWithDuration:0.6 
-                                  delay:i * 0.05 
-                 usingSpringWithDamping:0.8 
-                  initialSpringVelocity:0.5 
-                                options:UIViewAnimationOptionCurveEaseOut 
+            // Random color glitch effect
+            if ([cell isKindOfClass:[HNStoryTableViewCell class]]) {
+                HNStoryTableViewCell *storyCell = (HNStoryTableViewCell *)cell;
+                storyCell.titleLabel.textColor = [themeManager randomHackerColor];
+            }
+            
+            // Animate them in with hacker-style stagger and bounce
+            [UIView animateWithDuration:0.8 
+                                  delay:i * 0.03 
+                 usingSpringWithDamping:0.6 
+                  initialSpringVelocity:0.8 
+                                options:UIViewAnimationOptionCurveEaseInOut 
                              animations:^{
                 cell.transform = CGAffineTransformIdentity;
                 cell.alpha = 1;
-            } completion:nil];
+            } completion:^(BOOL finished) {
+                // Add subtle glow animation after cell appears
+                if ([cell isKindOfClass:[HNStoryTableViewCell class]]) {
+                    HNStoryTableViewCell *storyCell = (HNStoryTableViewCell *)cell;
+                    [storyCell.cardView.layer addAnimation:[themeManager hackerGlowAnimation] forKey:@"hackerGlow"];
+                }
+            }];
         }
     }
 }
